@@ -150,6 +150,69 @@ Test reports are generated in the `reports` directory in both JSON and HTML form
 - Response bodies and status codes
 - Error messages (if any)
 
+### Example Test Report
+
+```json
+{
+  "Timestamp": "2025-05-28T16:17:59.2626198+05:30",
+  "TotalTests": 1,
+  "PassedTests": 0,
+  "FailedTests": 1,
+  "Duration": 0,
+  "Results": [
+    {
+      "Endpoint": "/api/ClientMapping",
+      "Method": "GET",
+      "Status": 200,
+      "Duration": 1005222400,
+      "Error": "<nil>",
+      "RequestBody": "",
+      "Response": {
+        "hospitalCode": "NISC",
+        "id": 2,
+        "typeName": "ICD10Code",
+        "valuePairs": {
+          "C50.911": "Malignant neoplasm of unspecified site of right female breast",
+          "C50.912": "Malignant neoplasm of unspecified site of left female breast",
+          "C56.1": "Malignant neoplasm of right ovary",
+          "C56.2": "Malignant neoplasm of left ovary",
+          "Other": "",
+          "Z80.0": "Family history of malignant neoplasm of digestive organs [pancreas]",
+          "Z80.3": "Family history of malignant neoplasm of breast",
+          "Z80.41": "Family history of malignant neoplasm of ovary [epithelial]",
+          "Z80.42": "Family history of malignant neoplasm of prostate",
+          "Z83.71": "Family history of colon polyps — New",
+          "Z85.07": "Personal history of malignant neoplasm of pancreas",
+          "Z85.3": "Personal history of malignant neoplasm of breast",
+          "Z85.43": "Personal history of malignant neoplasm of ovary",
+          "Z85.46": "Personal history of malignant neoplasm of prostate",
+          "Z86.010": "Personal history of colon polyps — New"
+        }
+      }
+    }
+  ]
+}
+```
+
+### Example Test Template
+
+```json
+{
+  "endpoints": {
+    "GET /api/ClientMapping": {
+      "query_params": {
+        "hospitalCode": "NISC",
+        "typeName": "ICD10Code"
+      },
+      "headers": {
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      }
+    }
+  }
+}
+```
+
 ## Contributing
 
 1. Fork the repository
