@@ -1,0 +1,14 @@
+{
+  "endpoints": {
+    "GET /api/ClientMapping": {
+      "query_params": {
+        "hospitalCode": "NISC",
+        "typeName": "ICD10Code"
+      },
+      "headers": {
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      }
+    }
+  }
+}

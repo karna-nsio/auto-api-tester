@@ -1,0 +1,163 @@
+# Auto API Tester
+
+An automated API testing tool that generates and executes tests based on Swagger/OpenAPI specifications.
+
+## Features
+
+- Automatic test case generation from Swagger documentation
+- Support for all HTTP methods (GET, POST, PUT, DELETE, etc.)
+- Concurrent test execution
+- Detailed test reports in multiple formats (JSON, HTML)
+- Configurable test parameters and retry mechanisms
+- Environment-specific configurations
+- Docker support for easy deployment
+
+## Project Structure
+
+```
+auto-api-tester/
+├── cmd/
+│   └── main.go
+├── internal/
+│   ├── parser/      # Swagger/OpenAPI parser
+│   ├── executor/    # Test execution engine
+│   ├── reporter/    # Test reporting system
+│   └── config/      # Configuration management
+├── config/
+│   └── config.yaml  # Configuration file
+├── reports/         # Generated test reports
+├── testdata/        # Test data files
+├── Dockerfile       # Docker configuration
+├── go.mod
+└── README.md
+```
+
+## Prerequisites
+
+- Go 1.16 or higher
+- Docker (optional, for containerized deployment)
+- Access to the target API's Swagger documentation
+
+## Installation
+
+### Local Installation
+
+1. Clone the repository:
+```bash
+git clone https://github.com/yourusername/auto-api-tester.git
+cd auto-api-tester
+```
+
+2. Install dependencies:
+```bash
+go mod download
+```
+
+3. Configure the application:
+   - Set the `AUTH_TOKEN` environment variable for API authentication
+   - Modify `config/config.yaml` for your specific needs
+
+### Docker Installation
+
+1. Build the Docker image:
+```bash
+docker build -t auto-api-tester .
+```
+
+## Usage
+
+### Local Usage
+
+1. Generate test data template from Swagger documentation:
+```bash
+go run main.go generate -url <swagger-url>
+```
+
+2. Review and modify the generated template:
+   - Check `testdata/testdata_template.json`
+
+3. Run the API tests:
+```bash
+go run main.go
+```
+
+### Docker Usage
+
+1. Generate test data template:
+```bash
+docker run -v $(pwd)/testdata:/app/testdata auto-api-tester generate -url <swagger-url>
+```
+
+2. Run the tests:
+```bash
+docker run -v $(pwd)/testdata:/app/testdata -v $(pwd)/reports:/app/reports -e AUTH_TOKEN=your_token auto-api-tester
+```
+
+## Configuration
+
+The application can be configured through environment variables and the `config.yaml` file:
+
+```yaml
+environment:
+  qa:
+    base_url: ""
+    auth:
+      type: "bearer"
+      token: "${AUTH_TOKEN}"
+
+test:
+  concurrent: true
+  max_workers: 5
+  timeout: 30
+  retry:
+    attempts: 3
+    delay: 1
+
+reporting:
+  format: ["html", "json"]
+  output_dir: "./reports"
+  detailed: true
+```
+
+## Test Data Format
+
+The test data file (`testdata.json`) should follow this structure:
+
+```json
+{
+  "endpoints": {
+    "GET /api/endpoint": {
+      "query_params": {
+        "param1": "value1",
+        "param2": "value2"
+      },
+      "headers": {
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      }
+    }
+  }
+}
+```
+
+## Reports
+
+Test reports are generated in the `reports` directory in both JSON and HTML formats. The reports include:
+- Test execution timestamp
+- Total number of tests
+- Number of passed/failed tests
+- Detailed results for each test
+- Response bodies and status codes
+- Error messages (if any)
+
+## Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details. 

@@ -1,0 +1,19 @@
+environment:
+  qa:
+    base_url: ""
+    auth:
+      type: "bearer"
+      token: "${AUTH_TOKEN}"
+
+test:
+  concurrent: true
+  max_workers: 5
+  timeout: 30
+  retry:
+    attempts: 3
+    delay: 1
+
+reporting:
+  format: ["html", "json"]
+  output_dir: "./reports"
+  detailed: true 

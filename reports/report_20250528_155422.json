@@ -1,0 +1,39 @@
+{
+  "Timestamp": "2025-05-28T15:54:22.8708696+05:30",
+  "TotalTests": 1,
+  "PassedTests": 0,
+  "FailedTests": 1,
+  "Duration": 0,
+  "Results": [
+    {
+      "Endpoint": "/api/ClientMapping",
+      "Method": "GET",
+      "Status": 200,
+      "Duration": 900607000,
+      "Error": "\u003cnil\u003e",
+      "RequestBody": "",
+      "Response": {
+        "hospitalCode": "NISC",
+        "id": 2,
+        "typeName": "ICD10Code",
+        "valuePairs": {
+          "C50.911": "Malignant neoplasm of unspecified site of right female breast",
+          "C50.912": "Malignant neoplasm of unspecified site of left female breast",
+          "C56.1": "Malignant neoplasm of right ovary",
+          "C56.2": "Malignant neoplasm of left ovary",
+          "Other": "",
+          "Z80.0": "Family history of malignant neoplasm of digestive organs [pancreas]",
+          "Z80.3": "Family history of malignant neoplasm of breast",
+          "Z80.41": "Family history of malignant neoplasm of ovary [epithelial]",
+          "Z80.42": "Family history of malignant neoplasm of prostate",
+          "Z83.71": "Family history of colon polyps — New",
+          "Z85.07": "Personal history of malignant neoplasm of pancreas",
+          "Z85.3": "Personal history of malignant neoplasm of breast",
+          "Z85.43": "Personal history of malignant neoplasm of ovary",
+          "Z85.46": "Personal history of malignant neoplasm of prostate",
+          "Z86.010": "Personal history of colon polyps — New"
+        }
+      }
+    }
+  ]
+}
