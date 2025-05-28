@@ -44,7 +44,7 @@ auto-api-tester/
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/auto-api-tester.git
+git clone https://github.com/karna-nsio/auto-api-tester
 cd auto-api-tester
 ```
 
