@@ -81,18 +81,6 @@ go run main.go generate -url <swagger-url>
 go run main.go
 ```
 
-### Docker Usage
-
-1. Generate test data template:
-```bash
-docker run -v $(pwd)/testdata:/app/testdata auto-api-tester generate -url <swagger-url>
-```
-
-2. Run the tests:
-```bash
-docker run -v $(pwd)/testdata:/app/testdata -v $(pwd)/reports:/app/reports -e AUTH_TOKEN=your_token auto-api-tester
-```
-
 ## Configuration
 
 The application can be configured through environment variables and the `config.yaml` file:
