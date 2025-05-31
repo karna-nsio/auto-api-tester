@@ -2,23 +2,23 @@
   "endpoints": {
     "POST http://localhost:8080/Customer": {
       "body": {
-        "BillingAddress_Id": 438,
-        "CurrencyId": 581,
+        "BillingAddress_Id": 626,
+        "CurrencyId": 412,
         "active": true,
-        "adminComment": "value_906",
+        "adminComment": "value_809",
         "affiliateId": 0,
-        "cannotLoginUntilDateUtc": "2025-06-16T22:15:30+05:30",
-        "city": "City66",
-        "company": "Company279",
+        "cannotLoginUntilDateUtc": "2025-07-08T06:37:16+05:30",
+        "city": "City79",
+        "company": "Company353",
         "countryId": "Country47",
-        "county": null,
-        "createdOnUtc": "2025-05-31T14:15:30+05:30",
-        "customCustomerAttributesXML": "value_820",
-        "customerGuid": "d3ccca6d-39c0-4a6d-b247-0cf3f6997f96",
-        "dateOfBirth": "2025-07-06T11:15:30+05:30",
+        "county": "County12",
+        "createdOnUtc": "2025-05-31T14:37:16+05:30",
+        "customCustomerAttributesXML": "value_596",
+        "customerGuid": "15bbde65-5a88-4496-802a-00dc028e69c9",
+        "dateOfBirth": "2025-07-07T08:37:16+05:30",
         "deleted": false,
-        "email": "user_837@example.com",
-        "emailToRevalidate": "user_917@example.com"
+        "email": "user_317@example.com",
+        "emailToRevalidate": "user_351@example.com"
       },
       "headers": {
         "Accept": "application/json",
