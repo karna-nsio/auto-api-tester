@@ -1,0 +1,43 @@
+{
+  "Timestamp": "2025-05-30T12:12:56.5986402+05:30",
+  "TotalTests": 1,
+  "PassedTests": 1,
+  "FailedTests": 0,
+  "Duration": 0,
+  "Results": [
+    {
+      "Endpoint": "https://localhost:44336/api/DnaWgls/ByLabNumber/{labNumber}",
+      "Method": "POST",
+      "Status": 200,
+      "Duration": 1405936000,
+      "Error": "\u003cnil\u003e",
+      "RequestBody": "",
+      "Response": [
+        {
+          "aminoAcid": "p.Arg123Trp",
+          "category": "Pathogenic",
+          "comments": "Known pathogenic variant",
+          "disease": "Hereditary Cancer",
+          "dnaNumber": 12345,
+          "gene": "BRCA1",
+          "id": 76072358,
+          "inheritance": "Autosomal Dominant",
+          "location": "chr17:43057045",
+          "modifiedBy": "System",
+          "modifiedOn": "2024-03-19T10:00:00",
+          "nucleotide": "c.367C\u003eT",
+          "polyphen2": "Probably Damaging",
+          "polyphen2_scr": "0.998",
+          "posn": "123",
+          "prox_gene": "BRCA1",
+          "repeatCode": 1,
+          "scoreDate": "2024-03-19T10:00:00",
+          "sift_Scr": "0.01",
+          "testcode": 24001,
+          "variantNo": 1,
+          "zygosity": "Heterozygous"
+        }
+      ]
+    }
+  ]
+}

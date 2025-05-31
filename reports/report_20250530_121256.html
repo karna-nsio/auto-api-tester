@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Test Report</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .summary-card {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 6px;
+            text-align: center;
+        }
+        .summary-card h3 {
+            margin: 0;
+            color: #666;
+        }
+        .summary-card .number {
+            font-size: 2em;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .passed { color: #28a745; }
+        .failed { color: #dc3545; }
+        .total { color: #007bff; }
+        .results {
+            margin-top: 30px;
+        }
+        .test-case {
+            background-color: #fff;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            padding: 15px;
+        }
+        .test-case.passed {
+            border-left: 4px solid #28a745;
+        }
+        .test-case.failed {
+            border-left: 4px solid #dc3545;
+        }
+        .test-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        .test-details {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+        .timestamp {
+            color: #666;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>API Test Report</h1>
+            <p class="timestamp">Generated on: 2025-05-30 12:12:56</p>
+        </div>
+        
+        <div class="summary">
+            <div class="summary-card">
+                <h3>Total Tests</h3>
+                <div class="number total">1</div>
+            </div>
+            <div class="summary-card">
+                <h3>Passed Tests</h3>
+                <div class="number passed">1</div>
+            </div>
+            <div class="summary-card">
+                <h3>Failed Tests</h3>
+                <div class="number failed">0</div>
+            </div>
+            <div class="summary-card">
+                <h3>Duration</h3>
+                <div class="number">0s</div>
+            </div>
+        </div>
+
+        <div class="results">
+            <h2>Test Results</h2>
+            <div class="test-case failed">
+                <div class="test-header">
+                    <strong>POST https://localhost:44336/api/DnaWgls/ByLabNumber/{labNumber}</strong>
+                    <span>Status: 200</span>
+                </div>
+                <div>Duration: 1.406s</div>
+                <div class="test-details">
+                    <strong>Error:</strong> <nil>
+                </div>
+                <div class="test-details">
+                    <strong>Request Body:</strong>
+                    <pre>&#34;&#34;</pre>
+                    <strong>Response:</strong>
+                    <pre>[
+  {
+    &#34;aminoAcid&#34;: &#34;p.Arg123Trp&#34;,
+    &#34;category&#34;: &#34;Pathogenic&#34;,
+    &#34;comments&#34;: &#34;Known pathogenic variant&#34;,
+    &#34;disease&#34;: &#34;Hereditary Cancer&#34;,
+    &#34;dnaNumber&#34;: 12345,
+    &#34;gene&#34;: &#34;BRCA1&#34;,
+    &#34;id&#34;: 76072358,
+    &#34;inheritance&#34;: &#34;Autosomal Dominant&#34;,
+    &#34;location&#34;: &#34;chr17:43057045&#34;,
+    &#34;modifiedBy&#34;: &#34;System&#34;,
+    &#34;modifiedOn&#34;: &#34;2024-03-19T10:00:00&#34;,
+    &#34;nucleotide&#34;: &#34;c.367C\u003eT&#34;,
+    &#34;polyphen2&#34;: &#34;Probably Damaging&#34;,
+    &#34;polyphen2_scr&#34;: &#34;0.998&#34;,
+    &#34;posn&#34;: &#34;123&#34;,
+    &#34;prox_gene&#34;: &#34;BRCA1&#34;,
+    &#34;repeatCode&#34;: 1,
+    &#34;scoreDate&#34;: &#34;2024-03-19T10:00:00&#34;,
+    &#34;sift_Scr&#34;: &#34;0.01&#34;,
+    &#34;testcode&#34;: 24001,
+    &#34;variantNo&#34;: 1,
+    &#34;zygosity&#34;: &#34;Heterozygous&#34;
+  }
+]</pre>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

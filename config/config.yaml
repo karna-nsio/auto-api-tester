@@ -1,6 +1,6 @@
 environment:
   qa:
-    base_url: "https://sample-management-api-qa.baylorgenetics.com"
+    base_url: "https://localhost:44336"
     auth:
       type: "bearer"
       token: "${AUTH_TOKEN}"

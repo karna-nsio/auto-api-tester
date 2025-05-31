@@ -1,10 +1,27 @@
 {
   "endpoints": {
-    "GET /api/ClientMapping": {
-      "query_params": {
-        "hospitalCode": "NISC",
-        "typeName": "ICD10Code"
-      },
+    "POST http://localhost:8080/Customer": {
+      "body": [
+        {
+          "active": true,
+          "adminComment": "",
+          "affiliateId": 0,
+          "billingAddress_Id": 0,
+          "cannotLoginUntilDateUtc": "",
+          "city": "",
+          "company": null,
+          "countryId": "",
+          "county": "",
+          "createdOnUtc": "",
+          "currencyId": 1,
+          "customCustomerAttributesXML": "",
+          "customerGuid": "",
+          "dateOfBirth": "",
+          "deleted": false,
+          "email": "",
+          "emailToRevalidate": ""
+        }
+      ],
       "headers": {
         "Accept": "application/json",
         "Content-Type": "application/json"

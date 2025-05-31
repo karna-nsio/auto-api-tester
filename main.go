@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -15,7 +16,12 @@ import (
 	"auto-api-tester/internal/parser"
 	"auto-api-tester/internal/reporter"
 	"auto-api-tester/internal/testdata"
+	"auto-api-tester/internal/testdata/generator"
 	"auto-api-tester/internal/types"
+
+	_ "github.com/denisenkom/go-mssqldb" // for sqlserver
+	_ "github.com/go-sql-driver/mysql"   // for mysql
+	_ "github.com/lib/pq"                // for postgres
 )
 
 func convertTestResults(execResults []executor.TestResult) []reporter.TestResult {
@@ -59,6 +65,61 @@ func convertTestResults(execResults []executor.TestResult) []reporter.TestResult
 }
 
 func main() {
+	// Check if we're running the generate command with input
+	if len(os.Args) > 1 && os.Args[1] == "generate" && len(os.Args) > 2 && os.Args[2] == "--input" {
+		// Create a new flag set for the generate command
+		generateCmd := flag.NewFlagSet("generate", flag.ExitOnError)
+
+		// Define flags
+		dbType := generateCmd.String("db-type", "", "Database type (postgres|mysql|sqlserver)")
+		dbHost := generateCmd.String("db-host", "", "Database host")
+		dbPort := generateCmd.Int("db-port", 0, "Database port")
+		dbName := generateCmd.String("db-name", "", "Database name")
+		dbUser := generateCmd.String("db-user", "", "Database user")
+		dbPassword := generateCmd.String("db-password", "", "Database password")
+		templatePath := generateCmd.String("template", "", "Path to testdata template file")
+		outputPath := generateCmd.String("output", "", "Path to output testdata file")
+
+		// Parse flags
+		if err := generateCmd.Parse(os.Args[3:]); err != nil {
+			log.Fatalf("Failed to parse flags: %v", err)
+		}
+
+		// Validate required flags
+		if *dbType == "" || *dbHost == "" || *dbPort == 0 || *dbName == "" || *dbUser == "" || *dbPassword == "" {
+			fmt.Println("Error: All database configuration flags are required")
+			generateCmd.Usage()
+			os.Exit(1)
+		}
+
+		if *templatePath == "" || *outputPath == "" {
+			fmt.Println("Error: Template and output paths are required")
+			generateCmd.Usage()
+			os.Exit(1)
+		}
+
+		// Create database configuration
+		dbConfig := generator.DBConfig{
+			Type:     *dbType,
+			Host:     *dbHost,
+			Port:     *dbPort,
+			Database: *dbName,
+			User:     *dbUser,
+			Password: *dbPassword,
+		}
+
+		// Initialize database generator
+		dbGenerator := generator.NewDBGenerator(dbConfig, *templatePath, *outputPath)
+
+		// Generate test data
+		if err := dbGenerator.GenerateTestData(); err != nil {
+			log.Fatalf("Failed to generate test data: %v", err)
+		}
+
+		fmt.Printf("Test data generated successfully in %s\n", *outputPath)
+		return
+	}
+
 	// Check if we're running the generate command
 	if len(os.Args) > 1 && os.Args[1] == "generate" {
 		// Run the generate command

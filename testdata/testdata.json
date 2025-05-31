@@ -1,0 +1,58 @@
+{
+  "endpoints": {
+    "POST http://localhost:8080/Customer": {
+      "body": {
+        "Active": true,
+        "AdminComment": "value_942",
+        "AffiliateId": 58,
+        "BillingAddress_Id": null,
+        "CannotLoginUntilDateUtc": "2025-06-19T09:37:11+05:30",
+        "City": "City13",
+        "Company": null,
+        "CountryId": "Country52",
+        "County": "County86",
+        "CreatedOnUtc": "2025-06-06T23:37:11+05:30",
+        "CurrencyId": 87,
+        "CustomCustomerAttributesXML": null,
+        "CustomerGuid": "0b9b72b0-2187-413c-8ddc-b346b365d3e4",
+        "DateOfBirth": "2025-06-23T18:37:11+05:30",
+        "Deleted": true,
+        "Email": "user_229@example.com",
+        "EmailToRevalidate": null,
+        "FailedLoginAttempts": 466,
+        "Fax": "value_370",
+        "FirstName": "Name412",
+        "Gender": null,
+        "HasShoppingCartItems": true,
+        "Id": 625,
+        "IsSystemAccount": true,
+        "IsTaxExempt": true,
+        "LanguageId": 522,
+        "LastActivityDateUtc": "2025-06-19T11:37:11+05:30",
+        "LastIpAddress": "483 Main St",
+        "LastLoginDateUtc": "2025-06-15T13:37:11+05:30",
+        "LastName": "Name633",
+        "MustChangePassword": false,
+        "Phone": "+1-629-722-9642",
+        "RegisteredInStoreId": 261,
+        "RequireReLogin": false,
+        "ShippingAddress_Id": "42 Main St",
+        "StateProvinceId": 678,
+        "StreetAddress": null,
+        "StreetAddress2": "621 Main St",
+        "SystemName": "Name593",
+        "TaxDisplayTypeId": null,
+        "TimeZoneId": null,
+        "Username": "user_25",
+        "VatNumber": "VAT91657",
+        "VatNumberStatusId": "VAT352289",
+        "VendorId": 404,
+        "ZipPostalCode": null
+      },
+      "headers": {
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      }
+    }
+  }
+}

@@ -1,5 +1,10 @@
 package types
 
+// TestDataTemplate represents the structure of the test data template
+type TestDataTemplate struct {
+	Endpoints map[string]EndpointTestData `json:"endpoints"`
+}
+
 // Endpoint represents an API endpoint with its parameters and test data
 type Endpoint struct {
 	Method     string
