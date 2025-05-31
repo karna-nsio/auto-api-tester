@@ -1,25 +1,27 @@
 {
   "endpoints": {
     "POST http://localhost:8080/Customer": {
-      "body": {
-        "BillingAddress_Id": 438,
-        "CurrencyId": 581,
-        "active": true,
-        "adminComment": "value_906",
-        "affiliateId": 0,
-        "cannotLoginUntilDateUtc": "2025-06-16T22:15:30+05:30",
-        "city": "City66",
-        "company": "Company279",
-        "countryId": "Country47",
-        "county": null,
-        "createdOnUtc": "2025-05-31T14:15:30+05:30",
-        "customCustomerAttributesXML": "value_820",
-        "customerGuid": "d3ccca6d-39c0-4a6d-b247-0cf3f6997f96",
-        "dateOfBirth": "2025-07-06T11:15:30+05:30",
-        "deleted": false,
-        "email": "user_837@example.com",
-        "emailToRevalidate": "user_917@example.com"
-      },
+      "body": [
+        {
+          "active": true,
+          "adminComment": "",
+          "affiliateId": 0,
+          "billingAddress_Id": 0,
+          "cannotLoginUntilDateUtc": "",
+          "city": "",
+          "company": null,
+          "countryId": "",
+          "county": "",
+          "createdOnUtc": "",
+          "currencyId": 1,
+          "customCustomerAttributesXML": "",
+          "customerGuid": "",
+          "dateOfBirth": "",
+          "deleted": false,
+          "email": "",
+          "emailToRevalidate": ""
+        }
+      ],
       "headers": {
         "Accept": "application/json",
         "Content-Type": "application/json"

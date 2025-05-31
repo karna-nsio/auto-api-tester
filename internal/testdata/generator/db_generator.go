@@ -248,15 +248,11 @@ func (g *DBGenerator) generateGetData(path string, data types.EndpointTestData, 
 // generatePostData generates test data for POST endpoints
 func (g *DBGenerator) generatePostData(path string, data types.EndpointTestData, tables []string) (types.EndpointTestData, error) {
 	// Generate request body
-	// if data.Body == nil {
-	// Generate body data from database tables
 	generatedBody, err := g.generateBodyFromDB(tables)
 	if err != nil {
 		return data, err
 	}
 	data.Body = generatedBody
-	// }
-
 	return data, nil
 }
 
@@ -314,17 +310,12 @@ func (g *DBGenerator) generateBodyFromDB(tables []string) (interface{}, error) {
 		return nil, fmt.Errorf("failed to load template: %v", err)
 	}
 
-	fmt.Println("template", template)
 	// Create a map to hold the generated data
 	data := make(map[string]interface{})
 
 	// Get the template fields for this endpoint
 	var templateFields map[string]interface{}
 	for endpoint, endpointData := range template.Endpoints {
-		fmt.Println("endpoint", endpoint)
-		fmt.Println("endpointData", endpointData)
-		fmt.Println("mainTable", mainTable)
-
 		// Extract the path from the endpoint string (e.g., "POST http://localhost:8080/Customer" -> "Customer")
 		endpointParts := strings.Split(endpoint, " ")
 		if len(endpointParts) < 2 {
@@ -350,8 +341,6 @@ func (g *DBGenerator) generateBodyFromDB(tables []string) (interface{}, error) {
 			break
 		}
 	}
-
-	fmt.Println("templateFields", templateFields)
 
 	// If no template fields found, return empty data
 	if templateFields == nil {
@@ -398,6 +387,8 @@ func (g *DBGenerator) generateBodyFromDB(tables []string) (interface{}, error) {
 				fmt.Printf("Warning: Failed to get foreign key value for %s: %v\n", col.Name, err)
 				continue
 			}
+			fmt.Println("col.Name", col.Name)
+			fmt.Println("refValue", refValue)
 			data[col.Name] = refValue
 			continue
 		}
@@ -561,15 +552,17 @@ func (g *DBGenerator) getValidForeignKeyValue(refTable, columnName string) (inte
 		return nil, fmt.Errorf("failed to check if table exists: %v", err)
 	}
 	if !exists {
+		fmt.Println("table doesn't exist", refTable)
 		// If table doesn't exist, generate a random ID
 		return rand.Intn(1000) + 1, nil
 	}
-
 	// Query to get a random valid ID from the referenced table
+	// TODO: need to handle to get valid reference value
 	query := fmt.Sprintf("SELECT %s FROM %s ORDER BY RANDOM() LIMIT 1", columnName, refTable)
 	var value interface{}
 	err = g.db.QueryRow(query).Scan(&value)
 	if err != nil {
+		fmt.Println("query failed", err)
 		// If query fails, generate a random ID
 		return rand.Intn(1000) + 1, nil
 	}

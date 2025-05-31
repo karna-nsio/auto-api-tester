@@ -220,7 +220,7 @@ func main() {
 
 	// Initialize reporter
 	testReporter := reporter.NewReporter(reporter.ReportingConfig{
-		Format:    cfg.Reporting.Format,
+		Format:    []string{cfg.Reporting.Format},
 		OutputDir: cfg.Reporting.OutputDir,
 		Detailed:  cfg.Reporting.Detailed,
 	})
