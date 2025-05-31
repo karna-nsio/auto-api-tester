@@ -308,12 +308,83 @@ func (g *DBGenerator) generateBodyFromDB(tables []string) (interface{}, error) {
 		return nil, fmt.Errorf("failed to analyze table %s: %v", mainTable, err)
 	}
 
+	// Load the template to get the fields we need to generate
+	template, err := g.loadTemplate()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load template: %v", err)
+	}
+
+	fmt.Println("template", template)
 	// Create a map to hold the generated data
 	data := make(map[string]interface{})
 
-	// Generate values for each column
-	fmt.Println("tableInfo", tableInfo)
-	for _, col := range tableInfo.Columns {
+	// Get the template fields for this endpoint
+	var templateFields map[string]interface{}
+	for endpoint, endpointData := range template.Endpoints {
+		fmt.Println("endpoint", endpoint)
+		fmt.Println("endpointData", endpointData)
+		fmt.Println("mainTable", mainTable)
+
+		// Extract the path from the endpoint string (e.g., "POST http://localhost:8080/Customer" -> "Customer")
+		endpointParts := strings.Split(endpoint, " ")
+		if len(endpointParts) < 2 {
+			continue
+		}
+		path := endpointParts[len(endpointParts)-1]
+		pathParts := strings.Split(path, "/")
+		endpointTable := strings.ToLower(pathParts[len(pathParts)-1])
+
+		// Compare the endpoint table name with the main table name (both in lowercase)
+		if endpointTable == strings.ToLower(mainTable) {
+			// Handle both array and object body formats
+			switch body := endpointData.Body.(type) {
+			case map[string]interface{}:
+				templateFields = body
+			case []interface{}:
+				if len(body) > 0 {
+					if obj, ok := body[0].(map[string]interface{}); ok {
+						templateFields = obj
+					}
+				}
+			}
+			break
+		}
+	}
+
+	fmt.Println("templateFields", templateFields)
+
+	// If no template fields found, return empty data
+	if templateFields == nil {
+		return data, nil
+	}
+
+	// Generate values only for fields present in the template
+	for fieldName, defaultValue := range templateFields {
+		// Find the column in the table
+		var col *ColumnInfo
+		for _, c := range tableInfo.Columns {
+			if strings.EqualFold(c.Name, fieldName) {
+				col = &c
+				break
+			}
+		}
+
+		if col == nil {
+			// If column not found in database, use the default value from template
+			if defaultValue != nil {
+				data[fieldName] = defaultValue
+			} else {
+				// Generate a default value based on field name
+				value, err := g.generateValueForType("string", true, fieldName, ColumnInfo{})
+				if err != nil {
+					fmt.Printf("Warning: Failed to generate value for %s: %v\n", fieldName, err)
+					continue
+				}
+				data[fieldName] = value
+			}
+			continue
+		}
+
 		// Skip auto-increment primary keys for POST requests
 		if col.IsPrimary && col.IsAutoIncrement {
 			continue
@@ -331,8 +402,14 @@ func (g *DBGenerator) generateBodyFromDB(tables []string) (interface{}, error) {
 			continue
 		}
 
+		// If template has a default value, use it
+		if defaultValue != nil && defaultValue != "" {
+			data[fieldName] = defaultValue
+			continue
+		}
+
 		// Generate value based on column type and name
-		value, err := g.generateValueForType(col.Type, col.Nullable, col.Name, col)
+		value, err := g.generateValueForType(col.Type, col.Nullable, col.Name, *col)
 		if err != nil {
 			fmt.Printf("Warning: Failed to generate value for %s: %v\n", col.Name, err)
 			continue
@@ -346,7 +423,7 @@ func (g *DBGenerator) generateBodyFromDB(tables []string) (interface{}, error) {
 		}
 
 		// Add to data map
-		data[col.Name] = value
+		data[fieldName] = value
 	}
 
 	return data, nil
@@ -354,8 +431,8 @@ func (g *DBGenerator) generateBodyFromDB(tables []string) (interface{}, error) {
 
 // generateValueForType generates a value based on the column type and constraints
 func (g *DBGenerator) generateValueForType(colType string, nullable bool, columnName string, col ColumnInfo) (interface{}, error) {
-	// If nullable and random chance, return nil
-	if nullable && rand.Float32() < 0.2 {
+	// Only return nil if the field is explicitly nullable and has a high chance
+	if nullable && rand.Float32() < 0.1 { // Reduced chance of null from 0.2 to 0.1
 		return nil, nil
 	}
 
@@ -397,6 +474,18 @@ func (g *DBGenerator) generateValueForType(colType string, nullable bool, column
 		return fmt.Sprintf("Company%d", rand.Intn(1000)), nil
 	case strings.Contains(columnName, "county"):
 		return fmt.Sprintf("County%d", rand.Intn(100)), nil
+	case strings.Contains(columnName, "comment"):
+		return fmt.Sprintf("value_%d", rand.Intn(1000)), nil
+	case strings.Contains(columnName, "guid"):
+		return uuid.New().String(), nil
+	case strings.Contains(columnName, "id"):
+		return rand.Intn(1000) + 1, nil
+	case strings.Contains(columnName, "created") || strings.Contains(columnName, "updated"):
+		return time.Now().Format(time.RFC3339), nil
+	case strings.Contains(columnName, "deleted"):
+		return false, nil
+	case strings.Contains(columnName, "active"):
+		return true, nil
 	}
 
 	// If no specific pattern found, generate based on type

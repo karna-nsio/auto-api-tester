@@ -113,7 +113,6 @@ func (ta *TableAnalyzer) analyzeTable(tableName string) (TableInfo, error) {
 	if err != nil {
 		return info, err
 	}
-	fmt.Println("columns", columns)
 	info.Columns = columns
 
 	// Get primary key
