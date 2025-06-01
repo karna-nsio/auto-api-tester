@@ -32,7 +32,6 @@ func (c *OpenAIClient) callLLM(ctx context.Context, prompt string) (string, erro
 		openai.ChatCompletionRequest{
 			Model:       c.config.Model,
 			Temperature: float32(c.config.Temperature),
-			MaxTokens:   c.config.MaxTokens,
 			Messages: []openai.ChatCompletionMessage{
 				{
 					Role:    openai.ChatMessageRoleSystem,
@@ -42,6 +41,9 @@ func (c *OpenAIClient) callLLM(ctx context.Context, prompt string) (string, erro
 					Role:    openai.ChatMessageRoleUser,
 					Content: prompt,
 				},
+			},
+			ResponseFormat: &openai.ChatCompletionResponseFormat{
+				Type: openai.ChatCompletionResponseFormatTypeJSONObject,
 			},
 		},
 	)

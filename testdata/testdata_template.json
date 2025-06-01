@@ -1,25 +1,19 @@
 {
   "endpoints": {
-    "POST http://localhost:8080/Customer": {
+    "POST http://localhost:8080/users": {
       "body": [
         {
-          "active": true,
-          "adminComment": "",
-          "affiliateId": 0,
-          "billingAddress_Id": 0,
-          "cannotLoginUntilDateUtc": "",
+          "first_name": true,
+          "last_name": "",
+          "email": 0,
+          "phone_number": 0,
+          "date_of_birth": "",
+          "address": "",
           "city": "",
-          "company": null,
-          "countryId": "",
           "county": "",
-          "createdOnUtc": "",
-          "currencyId": 1,
-          "customCustomerAttributesXML": "",
-          "customerGuid": "",
-          "dateOfBirth": "",
-          "deleted": false,
-          "email": "",
-          "emailToRevalidate": ""
+          "postal_code": "",
+          "is_activated": "",
+          "deleted": false
         }
       ],
       "headers": {

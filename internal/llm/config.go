@@ -37,7 +37,7 @@ type Config struct {
 func NewDefaultConfig() *Config {
 	return &Config{
 		Provider:    "openai",
-		Model:       "gpt-4",
+		Model:       "gpt-4o-mini",
 		Temperature: 0.7,
 		MaxTokens:   2000,
 		AnalysisConfig: struct {

@@ -103,6 +103,7 @@ func LoadConfig() (*Config, error) {
 
 	// Set default LLM config if not provided
 	if config.LLM == nil {
+		fmt.Println("No LLM config provided, using default config")
 		config.LLM = llm.NewDefaultConfig()
 	}
 

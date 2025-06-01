@@ -1,0 +1,18 @@
+{
+  "Timestamp": "2025-06-01T11:49:37.6401329+05:30",
+  "TotalTests": 1,
+  "PassedTests": 0,
+  "FailedTests": 1,
+  "Duration": 0,
+  "Results": [
+    {
+      "Endpoint": "http://localhost:8080/Customor",
+      "Method": "POST",
+      "Status": 500,
+      "Duration": 20371800,
+      "Error": "Post \"http://localhost:8080/Customor\": dial tcp [::1]:8080: connectex: No connection could be made because the target machine actively refused it.",
+      "RequestBody": "",
+      "Response": null
+    }
+  ]
+}

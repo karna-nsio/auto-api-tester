@@ -65,6 +65,13 @@ func convertTestResults(execResults []executor.TestResult) []reporter.TestResult
 }
 
 func main() {
+
+	// Load configuration
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		log.Fatalf("Failed to load configuration: %v", err)
+	}
+
 	// Check if we're running the generate command with input
 	if len(os.Args) > 1 && os.Args[1] == "generate" && len(os.Args) > 2 && os.Args[2] == "--input" {
 		// Create a new flag set for the generate command
@@ -109,7 +116,7 @@ func main() {
 		}
 
 		// Initialize database generator
-		dbGenerator := generator.NewDBGenerator(dbConfig, *templatePath, *outputPath)
+		dbGenerator := generator.NewDBGenerator(dbConfig, *cfg.LLM, *templatePath, *outputPath)
 
 		// Generate test data
 		if err := dbGenerator.GenerateTestData(); err != nil {
@@ -162,12 +169,6 @@ func main() {
 		fmt.Printf("Test data template generated successfully in %s/testdata_template.json\n", outputDir)
 		fmt.Println("Please review and modify the template as needed, then rename it to testdata.json to run the tests.")
 		return
-	}
-
-	// Load configuration
-	cfg, err := config.LoadConfig()
-	if err != nil {
-		log.Fatalf("Failed to load configuration: %v", err)
 	}
 
 	// Load test data

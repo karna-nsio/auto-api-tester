@@ -1,6 +1,7 @@
 package generator
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -14,6 +15,8 @@ import (
 	_ "github.com/go-sql-driver/mysql"   // for mysql
 	_ "github.com/lib/pq"                // for postgres
 
+	"auto-api-tester/internal/llm"
+	"auto-api-tester/internal/logger"
 	"auto-api-tester/internal/types"
 
 	"github.com/google/uuid"
@@ -36,17 +39,23 @@ type DBGenerator struct {
 	templatePath string
 	outputPath   string
 	analyzer     *TableAnalyzer
+	llmClient    llm.LLMClient
 }
 
 // NewDBGenerator creates a new instance of DBGenerator
-func NewDBGenerator(config DBConfig, templatePath, outputPath string) *DBGenerator {
+func NewDBGenerator(dbConfig DBConfig, llmConfig llm.Config, templatePath, outputPath string) *DBGenerator {
 	// Initialize random number generator
 	rand.Seed(time.Now().UnixNano())
 
+	logger, _ := logger.NewLogger("db_generator")
+
+	llmClient, _ := llm.NewClient(&llmConfig, logger)
+
 	return &DBGenerator{
-		config:       config,
+		config:       dbConfig,
 		templatePath: templatePath,
 		outputPath:   outputPath,
+		llmClient:    llmClient,
 	}
 }
 
@@ -175,16 +184,24 @@ func (g *DBGenerator) generateEndpointData(method, path string, data types.Endpo
 		return testData, err
 	}
 
+	// Get a sample record from the main table
+
+	fmt.Println("tables[0]", tables[0])
+	sampleRecord, err := g.getSampleRecord(tables[0])
+	if err != nil {
+		return testData, fmt.Errorf("failed to get sample record: %v", err)
+	}
+
 	// Generate data based on HTTP method and database tables
 	switch method {
 	case "GET":
-		return g.generateGetData(path, testData, tables)
+		return g.generateGetData(path, testData, tables, sampleRecord)
 	case "POST":
-		return g.generatePostData(path, testData, tables)
+		return g.generatePostData(path, testData, tables, sampleRecord)
 	case "PUT":
-		return g.generatePutData(path, testData, tables)
+		return g.generatePutData(path, testData, tables, sampleRecord)
 	case "DELETE":
-		return g.generateDeleteData(path, testData, tables)
+		return g.generateDeleteData(path, testData, tables, sampleRecord)
 	default:
 		return testData, fmt.Errorf("unsupported HTTP method: %s", method)
 	}
@@ -201,43 +218,241 @@ func (g *DBGenerator) analyzeEndpointTables(method, path string) ([]string, erro
 	// Get the last part of the path as the potential table name
 	tableName := strings.ToLower(parts[len(parts)-1])
 
+	// Query to get the actual table name from database
+	checkQuery := `
+		SELECT table_name 
+		FROM information_schema.tables 
+		WHERE LOWER(table_name) = LOWER($1)
+		LIMIT 1
+	`
+	var actualTableName string
+	err := g.db.QueryRow(checkQuery, tableName).Scan(&actualTableName)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			// Table not found, use LLM to suggest alternatives
+			if g.llmClient == nil {
+				return nil, fmt.Errorf("table '%s' not found and LLM client is not available", tableName)
+			}
+
+			fmt.Printf("Table '%s' not found. Using LLM to suggest alternatives...\n", tableName)
+
+			// Get schema information for LLM analysis
+			schemaInfo := g.getSchemaInfo()
+
+			// Use LLM to analyze relationships and suggest similar tables
+			analysis, err := g.llmClient.AnalyzeRelationships(context.Background(), tableName, schemaInfo)
+			if err != nil {
+				return nil, fmt.Errorf("failed to analyze relationships with LLM: %v", err)
+			}
+
+			// Present suggestions to user with more details
+			fmt.Printf("\nSuggested tables for endpoint %s %s:\n", method, path)
+
+			// Display similar tables
+			fmt.Println("\nSimilar tables found:")
+			for i, similar := range analysis.SimilarTables {
+				fmt.Printf("%d. %s and %s\n", i+1, similar.Table1, similar.Table2)
+				fmt.Printf("   Reason: %s\n", similar.Reasoning)
+			}
+
+			// Display foreign key relationships
+			fmt.Println("\nForeign key relationships:")
+			for i, fk := range analysis.ForeignKeysAndDependencies {
+				fmt.Printf("%d. %s.%s -> %s.%s\n", i+1,
+					fk.Table, fk.ForeignKey,
+					fk.References.Table, fk.References.Column)
+			}
+
+			fmt.Printf("\n0. Enter custom table name\n")
+
+			// Get user input
+			var choice int
+			fmt.Print("\nSelect a table (enter number): ")
+			fmt.Scanln(&choice)
+
+			if choice == 0 {
+				// Get custom table name
+				fmt.Print("Enter custom table name: ")
+				fmt.Scanln(&tableName)
+			} else if choice > 0 && choice <= len(analysis.SimilarTables) {
+				// Use the first table from the selected similar tables pair
+				tableName = analysis.SimilarTables[choice-1].Table1
+			} else {
+				return nil, fmt.Errorf("invalid selection")
+			}
+		} else {
+			return nil, fmt.Errorf("failed to query table: %v", err)
+		}
+	}
 	// Find related tables
 	relatedTables, err := g.analyzer.FindRelatedTables(tableName)
 	if err != nil {
 		return nil, err
 	}
 
+	fmt.Println("actualTableName: ", actualTableName)
 	// Add the main table to the list
-	tables := append([]string{tableName}, relatedTables...)
+	tables := append([]string{actualTableName}, relatedTables...)
 	return tables, nil
 }
 
-// generateGetData generates test data for GET endpoints
-func (g *DBGenerator) generateGetData(path string, data types.EndpointTestData, tables []string) (types.EndpointTestData, error) {
-	// Generate query parameters
-	if len(data.QueryParams) > 0 {
-		for param, value := range data.QueryParams {
-			if value == nil {
-				// Generate value from database
-				generatedValue, err := g.generateValueFromDB(param, tables)
-				if err != nil {
-					return data, err
-				}
-				data.QueryParams[param] = generatedValue
+// getSchemaInfo returns schema information for LLM analysis
+func (g *DBGenerator) getSchemaInfo() map[string]interface{} {
+	schemaInfo := make(map[string]interface{})
+
+	// Query to get tables with a limit to reduce token usage
+	rows, err := g.db.Query(`
+		SELECT table_name 
+		FROM information_schema.tables 
+		WHERE table_schema = 'public'
+		LIMIT 10  -- Limit to most relevant tables
+	`)
+	if err != nil {
+		return schemaInfo
+	}
+	defer rows.Close()
+
+	// Get table information
+	for rows.Next() {
+		var tableName string
+		if err := rows.Scan(&tableName); err != nil {
+			continue
+		}
+
+		// Get only essential columns for each table
+		colRows, err := g.db.Query(`
+			SELECT column_name, data_type
+			FROM information_schema.columns
+			WHERE table_name = $1
+			AND column_name IN (
+				SELECT column_name 
+				FROM information_schema.key_column_usage 
+				WHERE table_name = $1
+				UNION
+				SELECT column_name 
+				FROM information_schema.constraint_column_usage 
+				WHERE table_name = $1
+			)
+		`, tableName)
+		if err != nil {
+			continue
+		}
+
+		columns := make([]map[string]string, 0)
+		for colRows.Next() {
+			var colName, dataType string
+			if err := colRows.Scan(&colName, &dataType); err != nil {
+				continue
 			}
+			columns = append(columns, map[string]string{
+				"name": colName,
+				"type": dataType,
+			})
+		}
+		colRows.Close()
+
+		if len(columns) > 0 {
+			schemaInfo[tableName] = columns
 		}
 	}
 
-	// Generate path parameters
-	if len(data.PathParams) > 0 {
-		for param, value := range data.PathParams {
-			if value == nil {
-				// Generate value from database
-				generatedValue, err := g.generateValueFromDB(param, tables)
-				if err != nil {
-					return data, err
+	return schemaInfo
+}
+
+// getSampleRecord retrieves a random record from the specified table
+func (g *DBGenerator) getSampleRecord(tableName string) (map[string]interface{}, error) {
+	// Get table structure
+	tableInfo, err := g.analyzer.analyzeTable(tableName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to analyze table %s: %v", tableName, err)
+	}
+	fmt.Println("tableInfo: ", tableInfo)
+
+	// Build SELECT query with all columns
+	columns := make([]string, len(tableInfo.Columns))
+	for i, col := range tableInfo.Columns {
+		// Quote column names to handle case sensitivity
+		columns[i] = fmt.Sprintf(`"%s"`, col.Name)
+	}
+	fmt.Println("table name in getSampleRecord", tableName)
+	// Quote the table name to handle case sensitivity
+	query := fmt.Sprintf(`SELECT %s FROM "%s" ORDER BY RANDOM() LIMIT 1`,
+		strings.Join(columns, ", "), tableName)
+
+	// Execute query
+	rows, err := g.db.Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query table %s: %v", tableName, err)
+	}
+	defer rows.Close()
+
+	// Get column names
+	columnNames, err := rows.Columns()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get column names: %v", err)
+	}
+
+	// Prepare slice for row values
+	values := make([]interface{}, len(columnNames))
+	valuePtrs := make([]interface{}, len(columnNames))
+	for i := range values {
+		valuePtrs[i] = &values[i]
+	}
+
+	// Scan the row
+	if !rows.Next() {
+		return nil, fmt.Errorf("no records found in table %s", tableName)
+	}
+	if err := rows.Scan(valuePtrs...); err != nil {
+		return nil, fmt.Errorf("failed to scan row: %v", err)
+	}
+
+	// Convert row to map
+	record := make(map[string]interface{})
+	for i, col := range columnNames {
+		val := values[i]
+		if val != nil {
+			record[col] = val
+		}
+	}
+
+	return record, nil
+}
+
+// generateGetData generates test data for GET endpoints
+func (g *DBGenerator) generateGetData(path string, data types.EndpointTestData, tables []string, sampleRecord map[string]interface{}) (types.EndpointTestData, error) {
+	// Use LLM to analyze the sample record and generate appropriate query parameters
+	if g.llmClient != nil {
+		analysis, err := g.llmClient.AnalyzeBusinessRules(context.Background(), tables[0], []map[string]interface{}{sampleRecord})
+		if err != nil {
+			return data, fmt.Errorf("failed to analyze sample record: %v", err)
+		}
+
+		// Generate query parameters based on the analysis
+		if len(data.QueryParams) > 0 {
+			for param, paramValue := range data.QueryParams {
+				if paramValue == nil {
+					// Use LLM to generate appropriate value based on sample record
+					generatedValue, err := g.generateValueFromSample(param, sampleRecord, analysis)
+					if err != nil {
+						return data, err
+					}
+					data.QueryParams[param] = generatedValue
 				}
-				data.PathParams[param] = generatedValue
+			}
+		}
+
+		// Generate path parameters based on the analysis
+		if len(data.PathParams) > 0 {
+			for param, paramValue := range data.PathParams {
+				if paramValue == nil {
+					// Use LLM to generate appropriate value based on sample record
+					generatedValue, err := g.generateValueFromSample(param, sampleRecord, analysis)
+					if err != nil {
+						return data, err
+					}
+					data.PathParams[param] = generatedValue
+				}
 			}
 		}
 	}
@@ -246,26 +461,192 @@ func (g *DBGenerator) generateGetData(path string, data types.EndpointTestData, 
 }
 
 // generatePostData generates test data for POST endpoints
-func (g *DBGenerator) generatePostData(path string, data types.EndpointTestData, tables []string) (types.EndpointTestData, error) {
-	// Generate request body
-	generatedBody, err := g.generateBodyFromDB(tables)
-	if err != nil {
-		return data, err
+func (g *DBGenerator) generatePostData(path string, data types.EndpointTestData, tables []string, sampleRecord map[string]interface{}) (types.EndpointTestData, error) {
+	// Use LLM to analyze the sample record and generate appropriate request body
+	if g.llmClient != nil {
+		// Prepare the context for LLM analysis
+		llmContext := map[string]interface{}{
+			"endpoint": map[string]interface{}{
+				"method": "POST",
+				"path":   path,
+				"body":   data.Body, // Pass the original body template
+			},
+			"sampleRecord": sampleRecord,
+			"table":        tables[0],
+		}
+
+		// Use LLM to analyze and generate data
+		analysis, err := g.llmClient.AnalyzeBusinessRules(context.Background(), tables[0], []map[string]interface{}{llmContext})
+		if err != nil {
+			return data, fmt.Errorf("failed to analyze sample record: %v", err)
+		}
+
+		// Generate request body based on the analysis, sample record, and endpoint template
+		// generatedBody, err := g.generateBodyFromTemplate(data.Body, sampleRecord, analysis)
+		// if err != nil {
+		// 	return data, err
+		// }
+		data.Body = analysis
 	}
-	data.Body = generatedBody
+
 	return data, nil
 }
 
+// generateBodyFromTemplate generates a request body based on the template, sample record, and analysis
+func (g *DBGenerator) generateBodyFromTemplate(template interface{}, sampleRecord map[string]interface{}, analysis *llm.AnalysisResult) (interface{}, error) {
+	switch t := template.(type) {
+	case map[string]interface{}:
+		// Handle object template
+		return g.generateObjectFromTemplate(t, sampleRecord, analysis)
+	case []interface{}:
+		// Handle array template
+		return g.generateArrayFromTemplate(t, sampleRecord, analysis)
+	default:
+		// If template is nil or not a map/array, use sample record directly
+		return g.generateBodyFromSample(sampleRecord, analysis)
+	}
+}
+
+// generateObjectFromTemplate generates an object based on the template structure
+func (g *DBGenerator) generateObjectFromTemplate(template map[string]interface{}, sampleRecord map[string]interface{}, analysis *llm.AnalysisResult) (map[string]interface{}, error) {
+	result := make(map[string]interface{})
+
+	// Process each field in the template
+	for field, templateValue := range template {
+		// If template has a specific value, use it
+		if templateValue != nil {
+			// Check if the value is a nested object or array
+			switch v := templateValue.(type) {
+			case map[string]interface{}:
+				// Recursively generate nested object
+				nestedObj, err := g.generateObjectFromTemplate(v, sampleRecord, analysis)
+				if err != nil {
+					return nil, err
+				}
+				result[field] = nestedObj
+			case []interface{}:
+				// Generate array
+				nestedArr, err := g.generateArrayFromTemplate(v, sampleRecord, analysis)
+				if err != nil {
+					return nil, err
+				}
+				result[field] = nestedArr
+			default:
+				// Use template value directly
+				result[field] = templateValue
+			}
+			continue
+		}
+
+		// If template value is nil, generate new value based on sample record
+		value, err := g.generateValueFromSample(field, sampleRecord, analysis)
+		if err != nil {
+			return nil, err
+		}
+		result[field] = value
+	}
+
+	return result, nil
+}
+
+// generateArrayFromTemplate generates an array based on the template structure
+func (g *DBGenerator) generateArrayFromTemplate(template []interface{}, sampleRecord map[string]interface{}, analysis *llm.AnalysisResult) ([]interface{}, error) {
+	if len(template) == 0 {
+		// If template is empty, generate a single item based on sample record
+		item, err := g.generateBodyFromSample(sampleRecord, analysis)
+		if err != nil {
+			return nil, err
+		}
+		return []interface{}{item}, nil
+	}
+
+	// Use first item in template as the structure
+	templateItem := template[0]
+	result := make([]interface{}, 0)
+
+	// Generate 1-3 items based on the template structure
+	numItems := rand.Intn(3) + 1
+	for i := 0; i < numItems; i++ {
+		var item interface{}
+		var err error
+
+		switch v := templateItem.(type) {
+		case map[string]interface{}:
+			item, err = g.generateObjectFromTemplate(v, sampleRecord, analysis)
+		case []interface{}:
+			item, err = g.generateArrayFromTemplate(v, sampleRecord, analysis)
+		default:
+			item, err = g.generateValueFromSample("", sampleRecord, analysis)
+		}
+
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, item)
+	}
+
+	return result, nil
+}
+
 // generatePutData generates test data for PUT endpoints
-func (g *DBGenerator) generatePutData(path string, data types.EndpointTestData, tables []string) (types.EndpointTestData, error) {
+func (g *DBGenerator) generatePutData(path string, data types.EndpointTestData, tables []string, sampleRecord map[string]interface{}) (types.EndpointTestData, error) {
 	// Similar to POST, but we need to ensure we have an ID
-	return g.generatePostData(path, data, tables)
+	return g.generatePostData(path, data, tables, sampleRecord)
 }
 
 // generateDeleteData generates test data for DELETE endpoints
-func (g *DBGenerator) generateDeleteData(path string, data types.EndpointTestData, tables []string) (types.EndpointTestData, error) {
+func (g *DBGenerator) generateDeleteData(path string, data types.EndpointTestData, tables []string, sampleRecord map[string]interface{}) (types.EndpointTestData, error) {
 	// Similar to GET, but we only need the ID
-	return g.generateGetData(path, data, tables)
+	return g.generateGetData(path, data, tables, sampleRecord)
+}
+
+// generateValueFromSample generates a value based on the sample record and analysis
+func (g *DBGenerator) generateValueFromSample(param string, sampleRecord map[string]interface{}, analysis interface{}) (interface{}, error) {
+	// First try to find a matching field in the sample record
+	// if value, exists := sampleRecord[param]; exists {
+	// 	return value, nil
+	// }
+
+	// // If no exact match, try to find similar fields
+	// for field, fieldValue := range sampleRecord {
+	// 	if strings.Contains(strings.ToLower(field), strings.ToLower(param)) {
+	// 		// Found a similar field, return its value
+	// 		return fieldValue, nil
+	// 	}
+	// }
+
+	// If no similar fields found, use the original value generation logic
+	return nil, nil
+}
+
+// generateBodyFromSample generates a request body based on the sample record and analysis
+func (g *DBGenerator) generateBodyFromSample(sampleRecord map[string]interface{}, analysis *llm.AnalysisResult) (interface{}, error) {
+	// Create a new map for the generated body
+	// generatedBody := make(map[string]interface{})
+
+	// // Copy values from sample record, but modify them slightly
+	// for field, _ := range sampleRecord {
+	// 	// Skip auto-increment primary keys
+	// 	if strings.HasSuffix(strings.ToLower(field), "id") && g.isAutoIncrement(field) {
+	// 		continue
+	// 	}
+
+	// 	// Generate a new value based on the type
+	// 	newValue, err := g.generateValueFromSample(field, sampleRecord, analysis)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// 	generatedBody[field] = newValue
+	// }
+
+	return nil, nil
+}
+
+// isAutoIncrement checks if a field is likely an auto-increment primary key
+func (g *DBGenerator) isAutoIncrement(field string) bool {
+	return strings.HasSuffix(strings.ToLower(field), "id") &&
+		(strings.HasPrefix(strings.ToLower(field), "id") ||
+			strings.Contains(strings.ToLower(field), "_id"))
 }
 
 // generateValueFromDB generates a value from database
@@ -287,8 +668,59 @@ func (g *DBGenerator) generateValueFromDB(param string, tables []string) (interf
 		}
 	}
 
-	// If no matching column found, return a default value
-	return nil, nil
+	// If no matching column found, use LLM to suggest value generation
+	if g.llmClient == nil {
+		return nil, fmt.Errorf("no matching column found for '%s' and LLM client is not available", param)
+	}
+
+	fmt.Printf("No matching column found for '%s'. Using LLM to suggest value...\n", param)
+
+	// Use LLM to analyze the parameter and suggest a value
+	analysis, err := g.llmClient.AnalyzeColumn(context.Background(), "", param, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to analyze parameter with LLM: %v", err)
+	}
+
+	// Present suggestions to user
+	fmt.Printf("\nSuggested value types for '%s':\n", param)
+	fmt.Printf("1. %s\n", analysis.DataPatterns.DataType)
+	if len(analysis.DataPatterns.ValueRange) > 0 {
+		fmt.Printf("2. Use one of these values: %v\n", analysis.DataPatterns.ValueRange)
+	}
+	fmt.Printf("3. Enter custom value\n")
+
+	// Get user input
+	var choice int
+	fmt.Print("\nSelect an option (enter number): ")
+	fmt.Scanln(&choice)
+
+	var value interface{}
+	switch choice {
+	case 1:
+		// Generate value based on suggested type
+		value, err = g.generateValueForType(analysis.DataPatterns.DataType, true, param, ColumnInfo{})
+	case 2:
+		if len(analysis.DataPatterns.ValueRange) > 0 {
+			// Use a random value from the range
+			value = analysis.DataPatterns.ValueRange[rand.Intn(len(analysis.DataPatterns.ValueRange))]
+		} else {
+			value, err = g.generateValueForType(analysis.DataPatterns.DataType, true, param, ColumnInfo{})
+		}
+	case 3:
+		// Get custom value
+		fmt.Print("Enter custom value: ")
+		var customValue string
+		fmt.Scanln(&customValue)
+		value = customValue
+	default:
+		return nil, fmt.Errorf("invalid selection")
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate value: %v", err)
+	}
+
+	return value, nil
 }
 
 // generateBodyFromDB generates body data from database tables
@@ -387,8 +819,6 @@ func (g *DBGenerator) generateBodyFromDB(tables []string) (interface{}, error) {
 				fmt.Printf("Warning: Failed to get foreign key value for %s: %v\n", col.Name, err)
 				continue
 			}
-			fmt.Println("col.Name", col.Name)
-			fmt.Println("refValue", refValue)
 			data[col.Name] = refValue
 			continue
 		}
@@ -552,19 +982,101 @@ func (g *DBGenerator) getValidForeignKeyValue(refTable, columnName string) (inte
 		return nil, fmt.Errorf("failed to check if table exists: %v", err)
 	}
 	if !exists {
-		fmt.Println("table doesn't exist", refTable)
-		// If table doesn't exist, generate a random ID
-		return rand.Intn(1000) + 1, nil
+		if g.llmClient == nil {
+			return nil, fmt.Errorf("referenced table '%s' not found and LLM client is not available", refTable)
+		}
+
+		fmt.Printf("Referenced table '%s' not found. Using LLM to suggest alternatives...\n", refTable)
+
+		// Get schema information for LLM analysis
+		schemaInfo := g.getSchemaInfo()
+
+		// Use LLM to analyze relationships and suggest similar tables
+		analysis, err := g.llmClient.AnalyzeRelationships(context.Background(), refTable, schemaInfo)
+		if err != nil {
+			return nil, fmt.Errorf("failed to analyze relationships with LLM: %v", err)
+		}
+
+		// Present suggestions to user
+		fmt.Printf("\nSimilar tables found:\n")
+		for i, suggestion := range analysis.Suggestions {
+			fmt.Printf("%d. %s (Similarity: %.2f)\n", i+1, suggestion.TableName, suggestion.SimilarityScore)
+			fmt.Printf("   Reason: %s\n", suggestion.Reasoning)
+		}
+		fmt.Printf("0. Enter custom table name\n")
+
+		// Get user input
+		var choice int
+		fmt.Print("\nSelect a table (enter number): ")
+		fmt.Scanln(&choice)
+
+		if choice == 0 {
+			// Get custom table name
+			fmt.Print("Enter custom table name: ")
+			fmt.Scanln(&refTable)
+		} else if choice > 0 && choice <= len(analysis.Suggestions) {
+			refTable = analysis.Suggestions[choice-1].TableName
+		} else {
+			return nil, fmt.Errorf("invalid selection")
+		}
 	}
+
 	// Query to get a random valid ID from the referenced table
-	// TODO: need to handle to get valid reference value
-	query := fmt.Sprintf("SELECT %s FROM %s ORDER BY RANDOM() LIMIT 1", columnName, refTable)
+	// Quote both table name and column name to handle case sensitivity
+	query := fmt.Sprintf(`SELECT "%s" FROM "%s" ORDER BY RANDOM() LIMIT 1`, columnName, refTable)
 	var value interface{}
 	err = g.db.QueryRow(query).Scan(&value)
 	if err != nil {
-		fmt.Println("query failed", err)
-		// If query fails, generate a random ID
-		return rand.Intn(1000) + 1, nil
+		if g.llmClient == nil {
+			return nil, fmt.Errorf("failed to get value from table '%s' and LLM client is not available", refTable)
+		}
+
+		fmt.Printf("Failed to get value from table '%s'. Using LLM to suggest value...\n", refTable)
+
+		// Use LLM to analyze the column and suggest a value
+		analysis, err := g.llmClient.AnalyzeColumn(context.Background(), refTable, columnName, nil)
+		if err != nil {
+			return nil, fmt.Errorf("failed to analyze column with LLM: %v", err)
+		}
+
+		// Present suggestions to user
+		fmt.Printf("\nSuggested value types for '%s.%s':\n", refTable, columnName)
+		fmt.Printf("1. %s\n", analysis.DataPatterns.DataType)
+		if len(analysis.DataPatterns.ValueRange) > 0 {
+			fmt.Printf("2. Use one of these values: %v\n", analysis.DataPatterns.ValueRange)
+		}
+		fmt.Printf("3. Enter custom value\n")
+
+		// Get user input
+		var choice int
+		fmt.Print("\nSelect an option (enter number): ")
+		fmt.Scanln(&choice)
+
+		switch choice {
+		case 1:
+			// Generate value based on suggested type
+			value, err = g.generateValueForType(analysis.DataPatterns.DataType, true, columnName, ColumnInfo{})
+		case 2:
+			if len(analysis.DataPatterns.ValueRange) > 0 {
+				// Use a random value from the range
+				value = analysis.DataPatterns.ValueRange[rand.Intn(len(analysis.DataPatterns.ValueRange))]
+			} else {
+				value, err = g.generateValueForType(analysis.DataPatterns.DataType, true, columnName, ColumnInfo{})
+			}
+		case 3:
+			// Get custom value
+			fmt.Print("Enter custom value: ")
+			var customValue string
+			fmt.Scanln(&customValue)
+			value = customValue
+		default:
+			return nil, fmt.Errorf("invalid selection")
+		}
+
+		if err != nil {
+			return nil, fmt.Errorf("failed to generate value: %v", err)
+		}
 	}
+
 	return value, nil
 }

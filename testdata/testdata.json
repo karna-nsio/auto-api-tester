@@ -1,24 +1,18 @@
 {
   "endpoints": {
-    "POST http://localhost:8080/Customer": {
+    "POST http://localhost:8080/users": {
       "body": {
-        "BillingAddress_Id": 859,
-        "CurrencyId": 13,
-        "active": true,
-        "adminComment": "value_910",
-        "affiliateId": 0,
-        "cannotLoginUntilDateUtc": "2025-06-03T08:53:52+05:30",
-        "city": "City7",
-        "company": "Company826",
-        "countryId": "Country55",
-        "county": "County43",
-        "createdOnUtc": "2025-05-31T18:53:52+05:30",
-        "customCustomerAttributesXML": "value_832",
-        "customerGuid": "75065efe-0626-4930-8d30-c70227e05423",
-        "dateOfBirth": "2025-07-03T20:53:52+05:30",
+        "address": "456 Elm St",
+        "city": "Los Angeles",
+        "county": "Los Angeles",
+        "date_of_birth": "1985-07-15T00:00:00Z",
         "deleted": false,
-        "email": null,
-        "emailToRevalidate": "user_683@example.com"
+        "email": "jane2@example.com",
+        "first_name": "Jane",
+        "is_activated": true,
+        "last_name": "Smith",
+        "phone_number": "+19876543210",
+        "postal_code": "90001"
       },
       "headers": {
         "Accept": "application/json",
